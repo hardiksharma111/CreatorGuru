@@ -1,0 +1,9 @@
+﻿{
+  "name": "creatorguru",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "verify:layout": "node scripts/verify-layout.mjs"
+  }
+}

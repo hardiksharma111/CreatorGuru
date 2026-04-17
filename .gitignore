@@ -1,0 +1,9 @@
+﻿node_modules/
+.next/
+dist/
+.env
+_tmp_doc/
+_tmp_doc.zip
+_reference_repo/
+doc_extracted.txt
+
