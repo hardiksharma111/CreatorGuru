@@ -1,8 +1,6 @@
 ﻿import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AppShell } from "../components/AppShell";
-import { ScoreCard } from "../components/ScoreCard";
-import { TrendCard } from "../components/TrendCard";
 
 type HealthScore = {
   label: string;
@@ -28,11 +26,36 @@ type ProfilePayload = {
   healthScores: HealthScore[];
 };
 
+type QuickAction = {
+  href: string;
+  title: string;
+  subtitle: string;
+  tone: "violet" | "blue" | "green";
+};
+
+const quickActions: QuickAction[] = [
+  { href: "/analyze", title: "Analyze Profile", subtitle: "Deep-dive into your metrics", tone: "violet" },
+  { href: "/chat", title: "Open Coach Chat", subtitle: "Get personalized strategy tips", tone: "blue" },
+  { href: "/calendar", title: "Generate Calendar", subtitle: "AI-powered content schedule", tone: "green" }
+];
+
+function scoreColor(label: string) {
+  switch (label.toLowerCase()) {
+    case "reach":
+      return "var(--tile-violet)";
+    case "engagement":
+      return "var(--tile-blue)";
+    case "consistency":
+      return "var(--tile-green)";
+    default:
+      return "var(--tile-orange)";
+  }
+}
+
 export default function Page() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [profile, setProfile] = useState<ProfilePayload | null>(null);
-  const [trends, setTrends] = useState<TrendOpportunity[]>([]);
 
   useEffect(() => {
     let mounted = true;
@@ -42,24 +65,19 @@ export default function Page() {
         setLoading(true);
         setError(null);
 
-        const [profileRes, trendsRes] = await Promise.all([
-          fetch("/api/analyze/profile"),
-          fetch("/api/trends/niche?niche=creator%20economy")
-        ]);
+        const profileRes = await fetch("/api/analyze/profile");
 
-        if (!profileRes.ok || !trendsRes.ok) {
+        if (!profileRes.ok) {
           throw new Error("Unable to load live dashboard data right now.");
         }
 
         const profileJson = await profileRes.json();
-        const trendsJson = await trendsRes.json();
 
         if (!mounted) {
           return;
         }
 
         setProfile(profileJson.profile as ProfilePayload);
-        setTrends((trendsJson.opportunities as TrendOpportunity[]) ?? []);
       } catch (loadError) {
         if (!mounted) {
           return;
@@ -83,53 +101,85 @@ export default function Page() {
 
   return (
     <AppShell title="Dashboard" subtitle="Your creator command center" currentPath="/dashboard">
-      <article className="card stack" style={{ marginBottom: 16 }}>
-        <div className="row" style={{ justifyContent: "space-between" }}>
-          <div>
-            <h3>Creator Pulse</h3>
-            <p className="muted">{loading ? "Loading live profile data..." : profile?.pulse}</p>
-          </div>
-          <span className="kpi">This week: {profile?.thisWeekPlannedPosts ?? 0} planned posts</span>
+      <article className="hero-insight card">
+        <div className="hero-insight-head">
+          <span className="insight-pill">Creator Pulse - Active</span>
+          <span className="week-pill">+24% this week</span>
+        </div>
+
+        <h2 className="insight-title">
+          Your content is <span>growing</span>. Let&apos;s push it <em>further</em>.
+        </h2>
+
+        <p className="insight-copy">
+          {loading
+            ? "Loading your latest performance insight..."
+            : profile?.summary}
+        </p>
+
+        <div className="hero-mini-stats">
+          <article className="spark-card">
+            <p>Engagement Trend</p>
+            <div className="sparkline" aria-hidden="true">
+              <span />
+            </div>
+          </article>
+          <article>
+            <strong>{profile?.healthScores?.[1]?.value ?? 0}%</strong>
+            <p>Avg. Engagement %</p>
+          </article>
+          <article>
+            <strong>{847}</strong>
+            <p>New Followers (7d)</p>
+          </article>
+          <article>
+            <strong>{profile?.thisWeekPlannedPosts ?? 0}</strong>
+            <p>Posts This Week</p>
+          </article>
         </div>
       </article>
 
       {error ? (
-        <article className="card" style={{ marginBottom: 16 }}>
+        <article className="card" style={{ marginTop: 14 }}>
           <p className="muted">{error}</p>
         </article>
       ) : null}
 
-      <div className="grid-3" style={{ marginTop: 0 }}>
-        {(profile?.healthScores ?? []).map((score) => (
-          <ScoreCard key={score.label} {...score} />
+      <div className="metrics-grid-clean">
+        {(profile?.healthScores ?? []).map((score, index) => (
+          <article className="metric-tile" key={score.label}>
+            <div className="metric-topline">
+              <span className="metric-icon" aria-hidden="true">{index % 2 === 0 ? "◌" : "◇"}</span>
+              <span className={`metric-delta ${score.delta?.startsWith("-") ? "negative" : "positive"}`}>{score.delta}</span>
+            </div>
+            <p className="metric-label">{score.label} Score</p>
+            <p className="metric-value">{score.value}<span>/100</span></p>
+            <div className="metric-bar" aria-hidden="true">
+              <span style={{ width: `${Math.max(0, Math.min(100, score.value))}%`, background: scoreColor(score.label) }} />
+            </div>
+            <p className="metric-foot">vs last month: {score.delta}</p>
+          </article>
         ))}
       </div>
 
-      <div className="grid-2">
-        <article className="card stack">
+      <section className="quick-actions-clean">
+        <div className="quick-actions-header">
           <h3>Quick Actions</h3>
-          <div className="row">
-            <Link href="/analyze" className="btn btn-primary">Analyze Profile</Link>
-            <Link href="/chat" className="btn btn-secondary">Open Coach Chat</Link>
-            <Link href="/calendar" className="btn btn-secondary">Generate Calendar</Link>
-            <Link href="/thumbnail" className="btn btn-secondary">Score Thumbnail</Link>
-          </div>
-          <p className="muted">Live API mode is active for dashboard and trends data.</p>
-        </article>
-
-        <article className="card stack">
-          <h3>Recent Analysis Summary</h3>
-          <p className="muted">{profile?.summary}</p>
-          <div className="kpi">Priority move: {profile?.priorityMove}</div>
-          <div className="progress"><span style={{ width: `${profile?.priorityProgress ?? 0}%` }} /></div>
-        </article>
-      </div>
-
-      <div className="grid-3">
-        {trends.map((trend) => (
-          <TrendCard key={trend.topic} {...trend} />
-        ))}
-      </div>
+          <Link href="/settings">View all tools</Link>
+        </div>
+        <div className="quick-actions-row">
+          {quickActions.map((action) => (
+            <Link key={action.href} href={action.href} className="action-card">
+              <span className={`action-glyph ${action.tone}`} aria-hidden="true">◍</span>
+              <span>
+                <strong>{action.title}</strong>
+                <small>{action.subtitle}</small>
+              </span>
+              <span className="action-arrow" aria-hidden="true">→</span>
+            </Link>
+          ))}
+        </div>
+      </section>
     </AppShell>
   );
 }
