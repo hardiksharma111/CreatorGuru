@@ -14,6 +14,42 @@
 - Real integrations still needed for YouTube, Instagram, Supabase, Gemini, and Groq.
 - Fine-tuning/custom creator model should be revisited later in backend work, not now.
 
+## Backend-First Execution Checklist
+- [x] Slice 1: Dashboard and Trends data contract
+	- Backend: implement `analyze/profile` + `trends/niche` responses with typed payloads.
+	- Frontend: replace dashboard and trends mock imports with API calls.
+	- Validation: verify cards render with live API payload and no mock fallback.
+- [ ] Slice 2: Coach chat loop
+	- Backend: implement `chat/message` with request validation and provider adapter.
+	- Frontend: send user prompt from chat screen and render assistant response.
+	- Validation: prompt, response, and error-state handling work.
+- [ ] Slice 3: Calendar generator
+	- Backend: implement `calendar/generate` with niche + cadence inputs.
+	- Frontend: replace calendar mock entries with generated plan.
+	- Validation: month grid fills from API and supports regenerate action.
+- [ ] Slice 4: Post and thumbnail analyzer
+	- Backend: implement `analyze/post` + `analyze/thumbnail` scoring payloads.
+	- Frontend: wire analyze and thumbnail pages to submit and render scores.
+	- Validation: score breakdown and recommendations match API response.
+- [ ] Slice 5: Benchmarks compare
+	- Backend: implement `benchmarks/compare` payload and sorting.
+	- Frontend: replace benchmark table mock rows with API data.
+	- Validation: table sorting/filtering with real payload.
+- [ ] Slice 6: Auth and persistence
+	- Backend: wire Supabase auth/session and DB write paths.
+	- Frontend: gate pages on auth state, store analyses/history.
+	- Validation: login/logout/session persistence across refreshes.
+
+## Mock Replacement Order
+- Start with dashboard + trends because those pages are heavily visible and easiest to verify quickly.
+- Remove `frontend/data/mockData.ts` usage page-by-page only after the corresponding backend endpoint is integrated.
+- Keep a temporary fallback only during in-progress slice work, then remove fallback before checking off that slice.
+- Add one checklist tick only when backend route, frontend wiring, and manual validation are all complete.
+
+## Latest Progress
+- Slice 1 completed: dashboard and trends now fetch live data from API routes instead of mock imports.
+- Verified with successful `next build` and direct endpoint checks for `/api/analyze/profile` and `/api/trends/niche`.
+
 ## Design Preferences
 - Avoid plain dashboard layouts.
 - Use expressive typography, layered gradients, color variation, shadows, and subtle animation.
