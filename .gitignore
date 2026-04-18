@@ -2,8 +2,7 @@
 .next/
 dist/
 .env
-keys/*
-!keys/.gitkeep
+keys.md
 _tmp_doc/
 _tmp_doc.zip
 _reference_repo/
