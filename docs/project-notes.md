@@ -50,6 +50,7 @@
 - Slice 1 completed: dashboard and trends now fetch live data from API routes instead of mock imports.
 - Verified with successful `next build` and direct endpoint checks for `/api/analyze/profile` and `/api/trends/niche`.
 - Dashboard UI pass completed from provided inspiration reference: cleaner analytics shell, grouped sidebar navigation, hero insight block, compact metric tiles, and quick action rail.
+- Frontend baseline replaced with the provided v3 code direction: icon rail shell, animated hero/metric dashboard, canvas charts, period tabs, counters, and AI coach interactions are now the main implementation in Next.js.
 
 ## Design Preferences
 - Avoid plain dashboard layouts.

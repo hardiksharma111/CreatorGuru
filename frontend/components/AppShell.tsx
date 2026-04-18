@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { ReactNode, useEffect, useState } from "react";
 
-type NavItem = { href: string; label: string; section: "main" | "tools" | "account"; glyph: string; badge?: string };
+type NavItem = { href: string; label: string; section: "main" | "tools" | "account"; glyph: string; badge?: boolean };
 
 const navItems: NavItem[] = [
-  { href: "/dashboard", label: "Dashboard", section: "main", glyph: "◻" },
-  { href: "/analyze", label: "Profile Analyzer", section: "main", glyph: "○" },
-  { href: "/trends", label: "Trend Radar", section: "main", glyph: "~", badge: "3" },
-  { href: "/chat", label: "AI Coach Chat", section: "tools", glyph: "◦" },
+  { href: "/dashboard", label: "Dashboard", section: "main", glyph: "▦" },
+  { href: "/analyze", label: "Profile Analyzer", section: "main", glyph: "◎" },
+  { href: "/trends", label: "Trend Radar", section: "main", glyph: "⌁", badge: true },
+  { href: "/chat", label: "AI Coach Chat", section: "tools", glyph: "◌" },
   { href: "/audit", label: "Post Auditor", section: "tools", glyph: "▣" },
   { href: "/thumbnail", label: "Thumbnail Scorer", section: "tools", glyph: "◇" },
   { href: "/calendar", label: "Content Calendar", section: "tools", glyph: "▤" },
@@ -31,6 +31,16 @@ export function AppShell({ title, subtitle, currentPath, children }: Props) {
     const initialTheme = savedTheme ?? (prefersDark ? "night" : "morning");
     setTheme(initialTheme);
     document.documentElement.dataset.theme = initialTheme === "night" ? "night" : "morning";
+
+    function onExternalThemeChange() {
+      const nextTheme = (window.localStorage.getItem("creatorguru-theme") as "morning" | "night" | null) ?? "morning";
+      setTheme(nextTheme);
+    }
+
+    window.addEventListener("creatorguru-theme-change", onExternalThemeChange);
+    return () => {
+      window.removeEventListener("creatorguru-theme-change", onExternalThemeChange);
+    };
   }, []);
 
   function toggleTheme() {
@@ -38,6 +48,7 @@ export function AppShell({ title, subtitle, currentPath, children }: Props) {
     setTheme(nextTheme);
     document.documentElement.dataset.theme = nextTheme === "night" ? "night" : "morning";
     window.localStorage.setItem("creatorguru-theme", nextTheme);
+    window.dispatchEvent(new CustomEvent("creatorguru-theme-change"));
   }
 
   const groupedNav = {
@@ -47,102 +58,58 @@ export function AppShell({ title, subtitle, currentPath, children }: Props) {
   };
 
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
-        <div className="brand brand-tight">
-          <span className="brand-badge" aria-hidden="true">✦</span>
-          <div>
-            CreatorGuru
-            <small>Analytics</small>
-          </div>
-        </div>
-        <div className="sidebar-group">
-          <p className="sidebar-section-title">Main</p>
-          <nav className="nav-list" aria-label="Main Navigation">
-            {groupedNav.main.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`nav-link ${item.href === currentPath ? "active" : ""}`}
-              >
-                <span className="nav-glyph" aria-hidden="true">{item.glyph}</span>
-                <span>{item.label}</span>
-                {item.badge ? <span className="nav-badge">{item.badge}</span> : null}
-              </Link>
-            ))}
-          </nav>
-        </div>
+    <div className="cg-layout">
+      <aside className="cg-sidebar">
+        <div className="cg-logo" aria-hidden="true">⚡</div>
 
-        <div className="sidebar-group">
-          <p className="sidebar-section-title">Tools</p>
-          <nav className="nav-list" aria-label="Tools Navigation">
-            {groupedNav.tools.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`nav-link ${item.href === currentPath ? "active" : ""}`}
-              >
-                <span className="nav-glyph" aria-hidden="true">{item.glyph}</span>
-                <span>{item.label}</span>
-              </Link>
-            ))}
-          </nav>
-        </div>
+        <nav className="cg-nav" aria-label="Main Navigation">
+          {groupedNav.main.map((item) => (
+            <Link key={item.href} href={item.href} className={`cg-nav-item ${item.href === currentPath ? "active" : ""}`} title={item.label}>
+              <span aria-hidden="true">{item.glyph}</span>
+              {item.badge ? <span className="cg-nav-dot" /> : null}
+            </Link>
+          ))}
 
-        <div className="sidebar-group">
-          <p className="sidebar-section-title">Account</p>
-          <nav className="nav-list" aria-label="Account Navigation">
-            {groupedNav.account.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`nav-link ${item.href === currentPath ? "active" : ""}`}
-              >
-                <span className="nav-glyph" aria-hidden="true">{item.glyph}</span>
-                <span>{item.label}</span>
-              </Link>
-            ))}
-          </nav>
-        </div>
+          <span className="cg-nav-sep" aria-hidden="true" />
 
-        <div className="sidebar-footer">
-          <div className="sidebar-theme-row">
-            <span className="sidebar-label">{theme === "night" ? "Night Mode" : "Dark Mode"}</span>
-            <button
-              type="button"
-              className={`toggle-switch ${theme === "night" ? "active" : ""}`}
-              onClick={toggleTheme}
-              aria-label="Toggle morning and night mode"
-            >
-              <span className="toggle-knob" />
-            </button>
-          </div>
+          {groupedNav.tools.map((item) => (
+            <Link key={item.href} href={item.href} className={`cg-nav-item ${item.href === currentPath ? "active" : ""}`} title={item.label}>
+              <span aria-hidden="true">{item.glyph}</span>
+            </Link>
+          ))}
 
-          <div className="account-tile">
-            <div className="avatar-chip" aria-hidden="true">AK</div>
-            <div>
-              <p className="account-name">Aiman Khan</p>
-              <p className="account-plan">Pro Plan</p>
-            </div>
-          </div>
+          <span className="cg-nav-sep" aria-hidden="true" />
+
+          {groupedNav.account.map((item) => (
+            <Link key={item.href} href={item.href} className={`cg-nav-item ${item.href === currentPath ? "active" : ""}`} title={item.label}>
+              <span aria-hidden="true">{item.glyph}</span>
+            </Link>
+          ))}
+        </nav>
+
+        <div className="cg-sidebar-foot">
+          <button type="button" className="cg-theme-btn" onClick={toggleTheme} aria-label="Toggle theme" title="Toggle theme">
+            {theme === "night" ? "☾" : "☼"}
+          </button>
+          <div className="cg-avatar" aria-hidden="true">AK</div>
         </div>
       </aside>
 
-      <main className="main">
-        <header className="topbar">
+      <main className="cg-main">
+        <header className="cg-top-bar">
           <div>
-            <h1 className="page-title">{title}</h1>
-            {subtitle ? <p className="muted">{subtitle}</p> : null}
+            <h1>{title}</h1>
+            {subtitle ? <p className="cg-subtitle">{subtitle}</p> : null}
           </div>
-          <div className="row topbar-actions">
-            <span className="sync-pill">Synced Live</span>
-            <Link href="/settings" className="icon-btn" aria-label="Theme settings">☼</Link>
-            <Link href="/settings" className="icon-btn" aria-label="Notifications">◌</Link>
-            <Link href="/settings" className="icon-btn" aria-label="System settings">⚙</Link>
+          <div className="cg-top-bar-r">
+            <span className="cg-live-pill">Synced Live</span>
+            <button type="button" className="cg-icon-btn" onClick={toggleTheme} aria-label="Toggle theme">{theme === "night" ? "☾" : "☼"}</button>
+            <Link href="/settings" className="cg-icon-btn" aria-label="Notifications">◌</Link>
+            <Link href="/settings" className="cg-icon-btn" aria-label="System settings">⚙</Link>
           </div>
         </header>
 
-        <section className="section content-canvas" style={{ paddingTop: 18 }}>
+        <section className="cg-content">
           {children}
         </section>
       </main>
