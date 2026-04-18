@@ -1,10 +1,12 @@
-﻿type Props = { role: 'user' | 'assistant'; content: string };
+﻿type Props = { role: "user" | "assistant"; content: string; time?: string };
 
-export function ChatBubble({ role, content }: Props) {
-  const align = role === 'user' ? 'flex-end' : 'flex-start';
+export function ChatBubble({ role, content, time }: Props) {
   return (
-    <div style={{ display: 'flex', justifyContent: align, margin: '8px 0' }}>
-      <div style={{ maxWidth: 520, border: '1px solid #ddd', padding: 10, borderRadius: 8 }}>{content}</div>
+    <div className={`chat-bubble ${role}`}>
+      <p>{content}</p>
+      {time ? (
+        <p style={{ marginTop: 6, fontSize: "0.74rem", opacity: 0.75 }}>{time}</p>
+      ) : null}
     </div>
   );
 }

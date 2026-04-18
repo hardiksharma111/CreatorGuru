@@ -1,4 +1,13 @@
 ﻿export function useAuth() {
-  return { user: null, isLoading: false };
+  return {
+    user: {
+      id: "demo-user-1",
+      name: "Hardik Sharma",
+      email: "hardik.creator@example.com",
+      plan: "Free"
+    },
+    isLoading: false,
+    isAuthenticated: true
+  };
 }
 
