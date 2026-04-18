@@ -47,13 +47,15 @@ export function AppShell({ title, subtitle, currentPath, children }: Props) {
           CreatorGuru
           <small>AI Strategy Console</small>
         </div>
+        <p className="sidebar-meta">Volume 01 • Creator Ops</p>
         <nav className="nav-list" aria-label="Main Navigation">
-          {navItems.map((item) => (
+          {navItems.map((item, index) => (
             <Link
               key={item.href}
               href={item.href}
               className={`nav-link ${item.href === currentPath ? "active" : ""}`}
             >
+              <span className="nav-index" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
               {item.label}
             </Link>
           ))}
@@ -78,15 +80,15 @@ export function AppShell({ title, subtitle, currentPath, children }: Props) {
             <h1 className="page-title">{title}</h1>
             {subtitle ? <p className="muted">{subtitle}</p> : null}
           </div>
-          <div className="row">
-            <span className="kpi">Live data mode: Mock</span>
+          <div className="row topbar-actions">
+            <span className="kpi">Live now: Dashboard + Trends</span>
             <Link href="/settings" className="btn btn-secondary">
               Configure
             </Link>
           </div>
         </header>
 
-        <section className="section" style={{ paddingTop: 18 }}>
+        <section className="section content-canvas" style={{ paddingTop: 18 }}>
           {children}
         </section>
       </main>

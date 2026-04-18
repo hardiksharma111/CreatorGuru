@@ -7,7 +7,7 @@
 
 export function ScoreCard({ label, value, helper, delta }: Props) {
   return (
-    <section className="card stack">
+    <section className="card stack score-card">
       <h3>{label}</h3>
       <p style={{ fontSize: "1.5rem", fontWeight: 900 }}>{value}/100</p>
       <div className="progress" aria-hidden="true">
