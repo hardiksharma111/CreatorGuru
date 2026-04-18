@@ -65,6 +65,7 @@
 ## Repo Hygiene
 - Keep docs in `docs/`.
 - Keep temporary extraction artifacts out of the repo.
+- Store local provider key files in `keys/` at the repo root. Keep the folder contents untracked.
 - Update these notes after major implementation steps.
 
 ## Follow-up Reminder
