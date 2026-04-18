@@ -19,7 +19,7 @@
 	- Backend: implement `analyze/profile` + `trends/niche` responses with typed payloads.
 	- Frontend: replace dashboard and trends mock imports with API calls.
 	- Validation: verify cards render with live API payload and no mock fallback.
-- [ ] Slice 2: Coach chat loop
+- [x] Slice 2: Coach chat loop
 	- Backend: implement `chat/message` with request validation and provider adapter.
 	- Frontend: send user prompt from chat screen and render assistant response.
 	- Validation: prompt, response, and error-state handling work.
@@ -51,6 +51,7 @@
 - Verified with successful `next build` and direct endpoint checks for `/api/analyze/profile` and `/api/trends/niche`.
 - Dashboard UI pass completed from provided inspiration reference: cleaner analytics shell, grouped sidebar navigation, hero insight block, compact metric tiles, and quick action rail.
 - Frontend baseline replaced with the provided v3 code direction: icon rail shell, animated hero/metric dashboard, canvas charts, period tabs, counters, and AI coach interactions are now the main implementation in Next.js.
+- Slice 2 completed: chat page now posts to `/api/chat/message`, renders assistant replies live, and the endpoint returns contextual responses from a local adapter with optional provider selection.
 
 ## Design Preferences
 - Avoid plain dashboard layouts.
