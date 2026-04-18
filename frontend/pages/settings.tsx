@@ -41,7 +41,7 @@ export default function Page() {
 
         <article className="card stack">
           <h3>Theme Preferences</h3>
-          <p className="muted">Switch between Morning Mode and Night Mode from the header toggle. It persists locally.</p>
+          <p className="muted">Switch between Morning Mode and Night Mode from the left sidebar beneath Settings. It persists locally.</p>
           <div className="feature-card">
             <h3>Morning Mode</h3>
             <p>Bright, warm, and daylight-friendly for planning sessions.</p>

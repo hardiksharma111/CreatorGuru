@@ -20,6 +20,8 @@
 - Support both morning and night mode.
 - Settings should not expose raw environment keys to end users.
 - The UI should feel colorful and experimental rather than minimal and flat.
+- Put the Morning/Night toggle in the left sidebar beneath Settings for visibility.
+- Use stronger contrast and richer accent colors so controls and text stay visible.
 
 ## Repo Hygiene
 - Keep docs in `docs/`.

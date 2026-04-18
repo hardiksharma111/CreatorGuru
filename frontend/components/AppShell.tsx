@@ -58,6 +58,18 @@ export function AppShell({ title, subtitle, currentPath, children }: Props) {
             </Link>
           ))}
         </nav>
+
+        <div className="sidebar-footer">
+          <p className="sidebar-label">Appearance</p>
+          <button type="button" className="theme-toggle theme-toggle-sidebar" onClick={toggleTheme} aria-label="Toggle morning and night mode">
+            <span className="theme-dot" aria-hidden="true" />
+            {theme === "night" ? "Night Mode" : "Morning Mode"}
+          </button>
+          <p className="sidebar-hint">Morning mode for planning. Night mode for focus.</p>
+          <Link href="/settings" className="sidebar-action">
+            Configure integrations
+          </Link>
+        </div>
       </aside>
 
       <main className="main">
@@ -67,10 +79,6 @@ export function AppShell({ title, subtitle, currentPath, children }: Props) {
             {subtitle ? <p className="muted">{subtitle}</p> : null}
           </div>
           <div className="row">
-            <button type="button" className="theme-toggle" onClick={toggleTheme} aria-label="Toggle morning and night mode">
-              <span className="theme-dot" aria-hidden="true" />
-              {theme === "night" ? "Night Mode" : "Morning Mode"}
-            </button>
             <span className="kpi">Live data mode: Mock</span>
             <Link href="/settings" className="btn btn-secondary">
               Configure
