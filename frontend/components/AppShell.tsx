@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useState } from "react";
 
 type NavItem = { href: string; label: string };
 
@@ -23,6 +23,23 @@ type Props = {
 };
 
 export function AppShell({ title, subtitle, currentPath, children }: Props) {
+  const [theme, setTheme] = useState<"morning" | "night">("morning");
+
+  useEffect(() => {
+    const savedTheme = window.localStorage.getItem("creatorguru-theme") as "morning" | "night" | null;
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const initialTheme = savedTheme ?? (prefersDark ? "night" : "morning");
+    setTheme(initialTheme);
+    document.documentElement.dataset.theme = initialTheme === "night" ? "night" : "morning";
+  }, []);
+
+  function toggleTheme() {
+    const nextTheme = theme === "night" ? "morning" : "night";
+    setTheme(nextTheme);
+    document.documentElement.dataset.theme = nextTheme === "night" ? "night" : "morning";
+    window.localStorage.setItem("creatorguru-theme", nextTheme);
+  }
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -50,6 +67,10 @@ export function AppShell({ title, subtitle, currentPath, children }: Props) {
             {subtitle ? <p className="muted">{subtitle}</p> : null}
           </div>
           <div className="row">
+            <button type="button" className="theme-toggle" onClick={toggleTheme} aria-label="Toggle morning and night mode">
+              <span className="theme-dot" aria-hidden="true" />
+              {theme === "night" ? "Night Mode" : "Morning Mode"}
+            </button>
             <span className="kpi">Live data mode: Mock</span>
             <Link href="/settings" className="btn btn-secondary">
               Configure

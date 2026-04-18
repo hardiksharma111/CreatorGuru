@@ -7,6 +7,16 @@ import { healthScores, trendOpportunities } from "../data/mockData";
 export default function Page() {
   return (
     <AppShell title="Dashboard" subtitle="Your creator command center" currentPath="/dashboard">
+      <article className="card stack" style={{ marginBottom: 16 }}>
+        <div className="row" style={{ justifyContent: "space-between" }}>
+          <div>
+            <h3>Creator Pulse</h3>
+            <p className="muted">Momentum is positive, but your strongest leverage is consistency and sharper hooks.</p>
+          </div>
+          <span className="kpi">This week: 3 planned posts</span>
+        </div>
+      </article>
+
       <div className="grid-3" style={{ marginTop: 0 }}>
         {healthScores.map((score) => (
           <ScoreCard key={score.label} {...score} />
@@ -32,6 +42,7 @@ export default function Page() {
             focus on value-forward openings.
           </p>
           <div className="kpi">Priority move: 2 educational reels + 1 breakdown short this weekend</div>
+          <div className="progress"><span style={{ width: "62%" }} /></div>
         </article>
       </div>
 

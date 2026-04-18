@@ -29,7 +29,10 @@ const featureItems = [
 
 export default function Page() {
   return (
-    <main>
+    <main className="section-slab">
+      <span className="floating-orb orb-1" aria-hidden="true" />
+      <span className="floating-orb orb-2" aria-hidden="true" />
+      <span className="floating-orb orb-3" aria-hidden="true" />
       <section className="hero">
         <div className="page-wrap hero-grid">
           <article className="hero-panel">
@@ -39,6 +42,9 @@ export default function Page() {
               CreatorGuru turns platform metrics into clear weekly moves. Analyze your profile, identify trend opportunities,
               audit content, and get an always-on AI coach built for solo creators.
             </p>
+            <div className="hero-banner">
+              <strong>Built for creators, not agencies.</strong> Personalized strategy, trend mapping, and ongoing coaching in one place.
+            </div>
             <div className="actions">
               <Link href="/auth" className="btn btn-primary">Get Started</Link>
               <Link href="/dashboard" className="btn btn-secondary">See Demo</Link>
@@ -58,12 +64,18 @@ export default function Page() {
                 <h3>Health Score</h3>
                 <p style={{ fontSize: "1.6rem", fontWeight: 900 }}>71/100</p>
                 <p className="muted">Engagement is improving; consistency still lags weekends.</p>
+                <div className="progress"><span style={{ width: "71%" }} /></div>
               </div>
               <div className="card stack">
                 <h3>Top Trend</h3>
                 <p style={{ fontWeight: 700 }}>Behind-the-Scenes Build Logs</p>
                 <p className="kpi">Estimated uplift +22%</p>
               </div>
+            </div>
+            <div className="grid-3" style={{ marginTop: 0 }}>
+              <div className="stat-pill"><p>Coach</p><p>Context-aware</p></div>
+              <div className="stat-pill"><p>Calendar</p><p>30 Days</p></div>
+              <div className="stat-pill"><p>Scoring</p><p>Multi-modal</p></div>
             </div>
           </article>
         </div>
