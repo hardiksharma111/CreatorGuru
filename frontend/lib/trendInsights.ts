@@ -90,6 +90,10 @@ export type TrendApiError = {
   error: string;
 };
 
+type TrendAnalysisOptions = {
+  customTopics?: string[];
+};
+
 type CacheEntry<T> = {
   value: T;
   expiresAt: number;
@@ -613,7 +617,11 @@ function scoreCandidates(candidates: Array<ReturnType<typeof buildTopicMetrics>>
   }).sort((left, right) => right.trend_score - left.trend_score);
 }
 
-export async function buildTrendAnalysis(nicheInput: string, daysInput: number): Promise<TrendAnalysisPayload> {
+export async function buildTrendAnalysis(
+  nicheInput: string,
+  daysInput: number,
+  options?: TrendAnalysisOptions
+): Promise<TrendAnalysisPayload> {
   const niche = (supportedNiches as readonly string[]).includes(nicheInput as SupportedNiche) ? nicheInput as SupportedNiche : "tech";
   const days = clamp(Number.isFinite(daysInput) ? daysInput : 7, 7, 30);
 
@@ -623,7 +631,11 @@ export async function buildTrendAnalysis(nicheInput: string, daysInput: number):
     getRssPulse(niche)
   ]);
 
-  const topicPool = generateTopicPool(niche, anchors, rss.map((item) => item.title), youtube.map((item) => item.title));
+  const generatedPool = generateTopicPool(niche, anchors, rss.map((item) => item.title), youtube.map((item) => item.title));
+  const customPool = (options?.customTopics || []).map((topic) => stripHtml(topic).trim()).filter(Boolean);
+  const topicPool = customPool.length
+    ? Array.from(new Set([...customPool, ...generatedPool])).slice(0, 24)
+    : generatedPool;
   const candidates = topicPool.map((topic) => buildTopicMetrics(niche, topic, anchors, rss, youtube));
   const opportunities = scoreCandidates(candidates).slice(0, 10).map((opportunity) => ({
     ...opportunity,
