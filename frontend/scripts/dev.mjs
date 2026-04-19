@@ -1,12 +1,10 @@
 import { spawn } from "child_process";
-import { rm } from "fs/promises";
 import net from "net";
 import { fileURLToPath } from "url";
 import path from "path";
 
 const appRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const nextCliPath = path.resolve(appRoot, "node_modules", "next", "dist", "bin", "next");
-const nextCachePath = path.resolve(appRoot, ".next");
 
 const requestedPort = Number(process.env.PORT || 3010);
 const maxAutoHealAttempts = Math.max(1, Math.min(5, Number(process.env.DEV_HEAL_ATTEMPTS || 3)));
@@ -48,10 +46,6 @@ async function choosePort(startPort) {
   return startPort;
 }
 
-async function clearNextCache() {
-  await rm(nextCachePath, { recursive: true, force: true });
-}
-
 function parseLines(stream, onLine) {
   let buffer = "";
   stream.on("data", (chunk) => {
@@ -73,6 +67,7 @@ function startNextDev(port) {
     cwd: appRoot,
     env: {
       ...process.env,
+      NEXT_DISABLE_WEBPACK_CACHE: "1",
       PORT: String(port)
     },
     stdio: ["inherit", "pipe", "pipe"]
@@ -202,8 +197,7 @@ async function main() {
 
   while (healCount <= maxAutoHealAttempts) {
     if (healCount > 0) {
-      console.log("Detected unstable dev state. Clearing .next cache and restarting...");
-      await clearNextCache();
+      console.log("Detected unstable dev state. Restarting dev server...");
     }
 
     const result = await bootOnce(currentPort);

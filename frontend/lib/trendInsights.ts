@@ -92,6 +92,7 @@ export type TrendApiError = {
 
 type TrendAnalysisOptions = {
   customTopics?: string[];
+  useOnlyCustomTopics?: boolean;
 };
 
 type CacheEntry<T> = {
@@ -428,24 +429,11 @@ function parseYouTubeVideoItem(item: any) {
 async function getYoutubeSpotlight(niche: SupportedNiche): Promise<YoutubeVideo[]> {
   return ttlCache(`youtube:${niche}`, 60 * 60 * 1000, async () => {
     const apiKey = process.env.YOUTUBE_API_KEY?.trim();
-    const seeds = nicheSeeds[niche];
     if (!apiKey) {
-      return Array.from({ length: 5 }, (_, index) => {
-        const seed = seeds[index % seeds.length];
-        const views = 120000 + index * 48000 + hashString(`${niche}:${seed}`) % 50000;
-        const velocity = 800 + (hashString(seed) % 2400);
-        return {
-          title: `${seed} that creators are using right now`,
-          views,
-          likes: Math.round(views * 0.04),
-          channel: `${niche[0].toUpperCase()}${niche.slice(1)} Insights`,
-          publishedAt: new Date(Date.now() - (index + 1) * 7 * 36e5).toISOString(),
-          view_velocity: velocity,
-          thumbnail: `https://picsum.photos/seed/${encodeURIComponent(seed)}/480/270`,
-          url: "https://www.youtube.com"
-        };
-      });
+      return [];
     }
+
+    const seeds = nicheSeeds[niche];
 
     try {
       const query = `${niche} ${seeds.slice(0, 3).join(" ")}`;
@@ -470,21 +458,7 @@ async function getYoutubeSpotlight(niche: SupportedNiche): Promise<YoutubeVideo[
       const items = (videosPayload.items || []).map(parseYouTubeVideoItem);
       return items.sort((left, right) => right.view_velocity - left.view_velocity).slice(0, 5);
     } catch {
-      return Array.from({ length: 5 }, (_, index) => {
-        const seed = seeds[index % seeds.length];
-        const views = 150000 + index * 37000 + hashString(`${niche}:${seed}`) % 25000;
-        const velocity = 1200 + (hashString(`${seed}:v`) % 3000);
-        return {
-          title: `${seed} that creators are using right now`,
-          views,
-          likes: Math.round(views * 0.04),
-          channel: `${niche[0].toUpperCase()}${niche.slice(1)} Insights`,
-          publishedAt: new Date(Date.now() - (index + 1) * 6 * 36e5).toISOString(),
-          view_velocity: velocity,
-          thumbnail: `https://picsum.photos/seed/${encodeURIComponent(seed)}/480/270`,
-          url: "https://www.youtube.com"
-        };
-      });
+      return [];
     }
   });
 }
@@ -633,9 +607,11 @@ export async function buildTrendAnalysis(
 
   const generatedPool = generateTopicPool(niche, anchors, rss.map((item) => item.title), youtube.map((item) => item.title));
   const customPool = (options?.customTopics || []).map((topic) => stripHtml(topic).trim()).filter(Boolean);
-  const topicPool = customPool.length
-    ? Array.from(new Set([...customPool, ...generatedPool])).slice(0, 24)
-    : generatedPool;
+  const topicPool = options?.useOnlyCustomTopics
+    ? (customPool.length ? Array.from(new Set(customPool)).slice(0, 24) : generatedPool)
+    : (customPool.length
+      ? Array.from(new Set([...customPool, ...generatedPool])).slice(0, 24)
+      : generatedPool);
   const candidates = topicPool.map((topic) => buildTopicMetrics(niche, topic, anchors, rss, youtube));
   const opportunities = scoreCandidates(candidates).slice(0, 10).map((opportunity) => ({
     ...opportunity,

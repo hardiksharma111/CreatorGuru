@@ -279,7 +279,10 @@ export default async function handler(
   try {
     const picked = pickProvider();
     const expanded = await expandQueryTopics(rawQuery, niche, picked);
-    const analysis = await buildTrendAnalysis(niche, days, { customTopics: expanded.topics });
+    const analysis = await buildTrendAnalysis(niche, days, {
+      customTopics: expanded.topics,
+      useOnlyCustomTopics: true
+    });
     const briefResult = await generateBriefs(analysis.opportunities, picked);
 
     return res.status(200).json({

@@ -324,54 +324,58 @@ export default function TrendsPage() {
           </section>
         ) : null}
 
-        <section className="mini-grid">
-          <div className="card stack spotlight-card">
-            <div className="section-head compact">
-              <div>
-                <p className="eyebrow">YouTube spotlight</p>
-                <h2>Fastest moving videos</h2>
+        {!isSearchingMode ? (
+          <section className="mini-grid">
+            <div className="card stack spotlight-card">
+              <div className="section-head compact">
+                <div>
+                  <p className="eyebrow">YouTube spotlight</p>
+                  <h2>Fastest moving videos</h2>
+                </div>
+                <span className="tag">Top 5</span>
               </div>
-              <span className="tag">Top 5</span>
+              <div className="youtube-list">
+                {loading
+                  ? Array.from({ length: 5 }, (_, index) => <TrendSkeleton key={index} />)
+                  : (youtubeVideos.length > 0
+                    ? youtubeVideos.map((video) => (
+                        <a key={video.url} className="youtube-item" href={video.url} target="_blank" rel="noreferrer">
+                          <img src={video.thumbnail} alt={video.title} />
+                          <div>
+                            <strong>{video.title}</strong>
+                            <p className="muted">{video.channel}</p>
+                            <span>{formatViews(video.views)} views · {video.view_velocity.toFixed(0)} views/hr</span>
+                          </div>
+                        </a>
+                      ))
+                    : <p className="muted">YouTube spotlight is unavailable until a valid YOUTUBE_API_KEY is loaded.</p>)}
+              </div>
             </div>
-            <div className="youtube-list">
-              {loading
-                ? Array.from({ length: 5 }, (_, index) => <TrendSkeleton key={index} />)
-                : youtubeVideos.map((video) => (
-                    <a key={video.url} className="youtube-item" href={video.url} target="_blank" rel="noreferrer">
-                      <img src={video.thumbnail} alt={video.title} />
-                      <div>
-                        <strong>{video.title}</strong>
-                        <p className="muted">{video.channel}</p>
-                        <span>{formatViews(video.views)} views · {video.view_velocity.toFixed(0)} views/hr</span>
-                      </div>
-                    </a>
-                  ))}
-            </div>
-          </div>
 
-          <div className="card stack spotlight-card">
-            <div className="section-head compact">
-              <div>
-                <p className="eyebrow">RSS pulse</p>
-                <h2>Recent signal headlines</h2>
+            <div className="card stack spotlight-card">
+              <div className="section-head compact">
+                <div>
+                  <p className="eyebrow">RSS pulse</p>
+                  <h2>Recent signal headlines</h2>
+                </div>
+                <span className="tag">Top 8</span>
               </div>
-              <span className="tag">Top 8</span>
+              <div className="rss-list">
+                {loading
+                  ? Array.from({ length: 8 }, (_, index) => <TrendSkeleton key={index} />)
+                  : rssHeadlines.map((item) => (
+                      <a key={`${item.source}-${item.title}`} className="rss-item" href={item.url} target="_blank" rel="noreferrer">
+                        <div>
+                          <strong>{item.title}</strong>
+                          <p className="muted">{item.source}</p>
+                        </div>
+                        <span>{item.timeAgo}</span>
+                      </a>
+                    ))}
+              </div>
             </div>
-            <div className="rss-list">
-              {loading
-                ? Array.from({ length: 8 }, (_, index) => <TrendSkeleton key={index} />)
-                : rssHeadlines.map((item) => (
-                    <a key={`${item.source}-${item.title}`} className="rss-item" href={item.url} target="_blank" rel="noreferrer">
-                      <div>
-                        <strong>{item.title}</strong>
-                        <p className="muted">{item.source}</p>
-                      </div>
-                      <span>{item.timeAgo}</span>
-                    </a>
-                  ))}
-            </div>
-          </div>
-        </section>
+          </section>
+        ) : null}
       </div>
     </AppShell>
   );
