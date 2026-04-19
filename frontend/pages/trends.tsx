@@ -10,6 +10,27 @@ import {
   SupportedNiche
 } from "../lib/trendInsights";
 
+type ProductionBrief = {
+  topic: string;
+  idealDuration: string;
+  hookScript: string;
+  platform: string;
+  angles: string[];
+  audioSuggestions: string[];
+};
+
+type TrendSearchPayload = {
+  ok: true;
+  query: string;
+  provider: "gemini" | "groq" | "heuristic";
+  niche: string;
+  days: number;
+  expandedTopics: string[];
+  opportunities: TrendOpportunity[];
+  briefs: ProductionBrief[];
+  updatedAt: string;
+};
+
 type DaysWindow = 7 | 14 | 30;
 
 const dayOptions: DaysWindow[] = [7, 14, 30];
@@ -49,6 +70,9 @@ function TrendSkeleton() {
 export default function TrendsPage() {
   const [niche, setNiche] = useState<SupportedNiche>("tech");
   const [days, setDays] = useState<DaysWindow>(7);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchPayload, setSearchPayload] = useState<TrendSearchPayload | null>(null);
+  const [searchLoading, setSearchLoading] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
   const [report, setReport] = useState<TrendAnalysisPayload | null>(null);
   const [loading, setLoading] = useState(true);
@@ -90,12 +114,60 @@ export default function TrendsPage() {
     };
   }, [niche, days, reloadToken]);
 
-  const opportunities = report?.opportunities ?? [];
+  async function runSearch() {
+    const query = searchQuery.trim();
+    if (!query || searchLoading) {
+      return;
+    }
+
+    setSearchLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch(
+        `/api/trends/search?q=${encodeURIComponent(query)}&niche=${encodeURIComponent(niche)}&days=${days}`
+      );
+      if (!response.ok) {
+        const payload = (await response.json()) as { error?: string };
+        throw new Error(payload.error || "Failed to run trend search.");
+      }
+
+      const payload = (await response.json()) as TrendSearchPayload;
+      setSearchPayload(payload);
+      setSelectedTrend(payload.opportunities[0] || null);
+    } catch (searchError) {
+      const message = searchError instanceof Error ? searchError.message : "Failed to run trend search.";
+      setError(message);
+    } finally {
+      setSearchLoading(false);
+    }
+  }
+
+  function clearSearch() {
+    setSearchPayload(null);
+    setSearchQuery("");
+    setSelectedTrend(report?.opportunities?.[0] || null);
+  }
+
+  const opportunities = searchPayload?.opportunities ?? report?.opportunities ?? [];
   const youtubeVideos = report?.youtube ?? [];
   const rssHeadlines = report?.rss ?? [];
-  const summary = report?.summary;
+  const summary = searchPayload
+    ? {
+        direction: `Query expansion returned ${searchPayload.expandedTopics.length} related sub-trends for \"${searchPayload.query}\".`,
+        bestVideoType: opportunities[0]?.best_format || "Short-form",
+        nextAction: opportunities[0]
+          ? `Publish ${opportunities[0].recommended_angles[0]} and track movement for 48 hours.`
+          : "Try another query with stronger creator intent keywords."
+      }
+    : report?.summary;
+  const briefs = searchPayload?.briefs ?? [];
+  const isSearchingMode = Boolean(searchPayload);
 
-  const lastUpdated = useMemo(() => formatTimestamp(report?.updatedAt), [report?.updatedAt]);
+  const lastUpdated = useMemo(
+    () => formatTimestamp(searchPayload?.updatedAt || report?.updatedAt),
+    [report?.updatedAt, searchPayload?.updatedAt]
+  );
 
   return (
     <AppShell
@@ -118,6 +190,39 @@ export default function TrendsPage() {
               <p className="muted trend-hero-copy">
                 The report combines live YouTube velocity, Google Trends anchors, and recent news signals to tell you which ideas are rising, which format to use, and what angle to publish next.
               </p>
+              <div className="trend-search-box">
+                <label htmlFor="trend-search-input" className="kpi">Search any topic</label>
+                <div className="trend-search-row">
+                  <input
+                    id="trend-search-input"
+                    className="input"
+                    placeholder="Try dance, personal branding, sleep routine..."
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        void runSearch();
+                      }
+                    }}
+                  />
+                  <button type="button" className="btn btn-primary" onClick={() => void runSearch()} disabled={searchLoading}>
+                    {searchLoading ? "Searching..." : "Search"}
+                  </button>
+                  {isSearchingMode ? (
+                    <button type="button" className="btn btn-secondary" onClick={clearSearch}>
+                      Back to Niche Radar
+                    </button>
+                  ) : null}
+                </div>
+                {searchPayload ? (
+                  <p className="muted">
+                    Expanded topics: {searchPayload.expandedTopics.join(", ")} · Provider: {searchPayload.provider}
+                  </p>
+                ) : (
+                  <p className="muted">Search mode runs free-text expansion and returns sub-trend production briefs.</p>
+                )}
+              </div>
               <div className="trend-hero-actions">
                 {supportedNiches.map((item) => (
                   <button
@@ -174,8 +279,8 @@ export default function TrendsPage() {
         <section className="stack">
           <div className="section-head">
             <div>
-              <p className="eyebrow">Trend leaderboard</p>
-              <h2>Best opportunities right now</h2>
+              <p className="eyebrow">{isSearchingMode ? "Search leaderboard" : "Trend leaderboard"}</p>
+              <h2>{isSearchingMode ? "Best sub-trends for your query" : "Best opportunities right now"}</h2>
             </div>
             <span className="tag">Top {opportunities.length || 0}</span>
           </div>
@@ -188,6 +293,36 @@ export default function TrendsPage() {
                 ))}
           </div>
         </section>
+
+        {briefs.length > 0 ? (
+          <section className="stack">
+            <div className="section-head">
+              <div>
+                <p className="eyebrow">Production briefs</p>
+                <h2>How to make each winning sub-trend</h2>
+              </div>
+              <span className="tag">Top {briefs.length}</span>
+            </div>
+            <div className="trend-grid">
+              {briefs.map((brief) => (
+                <article key={brief.topic} className="card stack brief-card">
+                  <h3>{brief.topic}</h3>
+                  <p className="muted"><strong>Ideal duration:</strong> {brief.idealDuration}</p>
+                  <p className="muted"><strong>Platform:</strong> {brief.platform}</p>
+                  <p className="muted"><strong>Hook script:</strong> {brief.hookScript}</p>
+                  <p className="kpi">Angles</p>
+                  {brief.angles.map((angle) => (
+                    <span key={angle} className="tag">{angle}</span>
+                  ))}
+                  <p className="kpi">Audio suggestions</p>
+                  {brief.audioSuggestions.map((audio) => (
+                    <span key={audio} className="tag">{audio}</span>
+                  ))}
+                </article>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         <section className="mini-grid">
           <div className="card stack spotlight-card">

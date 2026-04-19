@@ -1250,6 +1250,24 @@ a {
   background: linear-gradient(135deg, rgba(12, 40, 52, 0.06), rgba(19, 119, 150, 0.1));
 }
 
+.trend-search-box {
+  margin-top: 8px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(127, 146, 173, 0.24);
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.trend-search-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.trend-search-row .input {
+  flex: 1;
+}
+
 .split-row {
   justify-content: space-between;
 }
@@ -1414,6 +1432,14 @@ a {
   min-height: 100%;
 }
 
+.brief-card {
+  background: linear-gradient(165deg, rgba(255, 252, 247, 0.96), rgba(236, 250, 252, 0.9));
+}
+
+.brief-card .tag {
+  width: fit-content;
+}
+
 .youtube-list,
 .rss-list {
   display: flex;
@@ -1484,7 +1510,9 @@ a {
 [data-theme="night"] .pill,
 [data-theme="night"] .trend-badge,
 [data-theme="night"] .chip,
-[data-theme="night"] .icon-pill {
+[data-theme="night"] .icon-pill,
+[data-theme="night"] .trend-search-box,
+[data-theme="night"] .brief-card {
   background: rgba(13, 27, 37, 0.94);
   border-color: rgba(255, 255, 255, 0.08);
 }
@@ -1618,6 +1646,11 @@ a {
   .youtube-item,
   .rss-item {
     grid-template-columns: 1fr;
+  }
+
+  .trend-search-row {
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .youtube-item img {
