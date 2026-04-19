@@ -1,6 +1,21 @@
 import Link from "next/link";
+import { useRouter } from "next/router";
+import { useAuth } from "../hooks/useAuth";
 
 export default function Page() {
+  const router = useRouter();
+  const { signInDemo, signOut } = useAuth();
+
+  function continueWithLogin() {
+    signInDemo();
+    void router.push("/dashboard");
+  }
+
+  function continueAsGuest() {
+    signOut();
+    void router.push("/dashboard");
+  }
+
   return (
     <main className="hero">
       <div className="page-wrap hero-grid">
@@ -13,8 +28,9 @@ export default function Page() {
             Connect your creator profile, run performance analysis, and build your next month of content with confidence.
           </p>
           <div className="actions">
-            <button className="btn btn-primary" type="button">Continue with Google</button>
-            <button className="btn btn-secondary" type="button">Continue with Email</button>
+            <button className="btn btn-primary" type="button" onClick={continueWithLogin}>Continue with Google</button>
+            <button className="btn btn-secondary" type="button" onClick={continueWithLogin}>Continue with Email</button>
+            <button className="btn btn-secondary" type="button" onClick={continueAsGuest}>Continue as Guest Demo</button>
           </div>
           <p className="muted">By continuing, you agree to CreatorGuru terms and privacy policy.</p>
         </section>

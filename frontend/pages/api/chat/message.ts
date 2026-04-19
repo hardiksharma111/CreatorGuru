@@ -13,7 +13,7 @@ type ChatMessageBody = {
 
 type ChatMessageResponse = {
   ok: true;
-  provider: "local-adapter" | "gemini" | "groq";
+  provider: "gemini" | "groq";
   reply: {
     role: "assistant";
     content: string;
@@ -22,48 +22,127 @@ type ChatMessageResponse = {
   intent: string;
 };
 
-function pickProvider(): ChatMessageResponse["provider"] {
-  if (process.env.GEMINI_API_KEY) {
-    return "gemini";
+type ProviderChoice =
+  | { provider: "gemini"; key: string }
+  | { provider: "groq"; key: string };
+
+function pickProvider(): ProviderChoice | null {
+  const groq = process.env.GROQ_API_KEY;
+  if (groq) {
+    return { provider: "groq", key: groq };
   }
 
-  if (process.env.GROQ_API_KEY) {
-    return "groq";
+  const gemini = process.env.GEMINI_API_KEY;
+  if (gemini) {
+    return { provider: "gemini", key: gemini };
   }
 
-  return "local-adapter";
+  return null;
 }
 
-function buildReply(message: string, platform?: string, context?: ChatMessageBody["context"]) {
+function classifyIntent(message: string) {
   const normalized = message.toLowerCase();
-  const platformLabel = platform?.trim() || "your creator stack";
-  const followUp = context?.calendarFocus ? ` Your current calendar focus is ${context.calendarFocus}.` : "";
 
   if (normalized.includes("post") && normalized.includes("weekend")) {
-    return {
-      intent: "content-plan",
-      content: `For ${platformLabel}, use a myth-vs-reality angle on Saturday and a process breakdown on Sunday.${followUp} Keep the hook under 2 seconds and end with a direct CTA.`
-    };
+    return "content-plan";
   }
 
   if (normalized.includes("hook") || normalized.includes("retention")) {
-    return {
-      intent: "hook-optimization",
-      content: `Open with the outcome first, then show the tension. Your first 3 seconds should state the payoff clearly.${followUp} Pair the hook with a stronger on-screen text line.`
-    };
+    return "hook-optimization";
   }
 
   if (normalized.includes("time") || normalized.includes("post")) {
-    return {
-      intent: "posting-window",
-      content: `Post at the strongest engagement window for ${platformLabel} after a short warm-up story. If you want higher reach, test one slot in the evening and one on a weekend morning.${followUp}`
-    };
+    return "posting-window";
   }
 
-  return {
-    intent: "strategy-advice",
-    content: `You should keep the message concrete and tied to a measurable outcome. Based on ${platformLabel}, I would optimize for consistency, sharper hooks, and one repeatable content format.${followUp}`
+  return "strategy-advice";
+}
+
+function buildPrompt(message: string, platform?: string, context?: ChatMessageBody["context"]) {
+  const platformLabel = platform?.trim() || "Instagram + YouTube";
+  const contextBlock = [
+    `Platform mix: ${context?.currentPlatformMix || "unknown"}`,
+    `Top format: ${context?.topFormat || "unknown"}`,
+    `Latest score: ${context?.latestScore || "unknown"}`,
+    `Calendar focus: ${context?.calendarFocus || "unknown"}`
+  ].join("\n");
+
+  return [
+    "You are CreatorGuru, an AI growth coach for social creators.",
+    "Give practical, concise, and execution-ready advice.",
+    `Platform scope: ${platformLabel}.`,
+    "Creator context:",
+    contextBlock,
+    "User message:",
+    message,
+    "Respond in plain text with: 1) diagnosis 2) clear next actions 3) one test to run."
+  ].join("\n\n");
+}
+
+async function callGemini(apiKey: string, prompt: string): Promise<string> {
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(apiKey)}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.6, maxOutputTokens: 500 }
+      })
+    }
+  );
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Gemini request failed (${response.status}): ${text.slice(0, 300)}`);
+  }
+
+  const payload = (await response.json()) as {
+    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
   };
+
+  const text = payload.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("\n").trim();
+  if (!text) {
+    throw new Error("Gemini returned an empty response.");
+  }
+
+  return text;
+}
+
+async function callGroq(apiKey: string, prompt: string): Promise<string> {
+  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model: "llama-3.3-70b-versatile",
+      messages: [
+        { role: "system", content: "You are CreatorGuru, a concise growth coach." },
+        { role: "user", content: prompt }
+      ],
+      temperature: 0.6
+    })
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Groq request failed (${response.status}): ${text.slice(0, 300)}`);
+  }
+
+  const payload = (await response.json()) as {
+    choices?: Array<{ message?: { content?: string } }>;
+  };
+
+  const text = payload.choices?.[0]?.message?.content?.trim();
+  if (!text) {
+    throw new Error("Groq returned an empty response.");
+  }
+
+  return text;
 }
 
 export default function handler(req: NextApiRequest, res: NextApiResponse<ChatMessageResponse | { ok: false; error: string }>) {
@@ -79,17 +158,39 @@ export default function handler(req: NextApiRequest, res: NextApiResponse<ChatMe
     return res.status(400).json({ ok: false, error: "message is required" });
   }
 
-  const provider = pickProvider();
-  const reply = buildReply(message, body.platform, body.context);
+  const picked = pickProvider();
+  if (!picked) {
+    return res.status(503).json({
+      ok: false,
+      error: "No AI provider key configured. Add GEMINI_API_KEY or GROQ_API_KEY in keys.md or environment variables."
+    });
+  }
 
-  return res.status(200).json({
-    ok: true,
-    provider,
-    intent: reply.intent,
-    reply: {
-      role: "assistant",
-      content: reply.content,
-      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+  const prompt = buildPrompt(message, body.platform, body.context);
+  const intent = classifyIntent(message);
+
+  const run = async () => {
+    if (picked.provider === "gemini") {
+      return callGemini(picked.key, prompt);
     }
-  });
+    return callGroq(picked.key, prompt);
+  };
+
+  return run()
+    .then((content) => {
+      res.status(200).json({
+        ok: true,
+        provider: picked.provider,
+        intent,
+        reply: {
+          role: "assistant",
+          content,
+          time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+        }
+      });
+    })
+    .catch((error: unknown) => {
+      const messageText = error instanceof Error ? error.message : "Provider call failed.";
+      res.status(502).json({ ok: false, error: messageText });
+    });
 }

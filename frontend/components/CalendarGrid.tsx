@@ -6,6 +6,15 @@
 };
 
 export function CalendarGrid({ entries }: { entries: CalendarEntry[] }) {
+  if (entries.length === 0) {
+    return (
+      <article className="card stack">
+        <h3>No calendar entries yet</h3>
+        <p className="muted">Generate a plan to fill your 30-day schedule.</p>
+      </article>
+    );
+  }
+
   return (
     <ul className="calendar-grid" style={{ listStyle: "none", padding: 0, margin: 0 }}>
       {entries.map((entry) => (

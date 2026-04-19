@@ -1,6 +1,9 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { AppShell } from "../components/AppShell";
 import { ChatBubble } from "../components/ChatBubble";
+import { suggestedPrompts } from "../data/mockData";
+import { addAnalysisHistoryEntry } from "../lib/persistence";
+import { useAuth } from "../hooks/useAuth";
 
 type ChatMessage = {
   role: "user" | "assistant";
@@ -10,7 +13,7 @@ type ChatMessage = {
 
 type ChatReplyPayload = {
   ok: true;
-  provider: "local-adapter" | "gemini" | "groq";
+  provider: "gemini" | "groq";
   intent: string;
   reply: {
     role: "assistant";
@@ -24,13 +27,6 @@ type ChatErrorPayload = {
   error: string;
 };
 
-const suggestedPrompts = [
-  "Why did my last reel underperform?",
-  "What should I post this weekend?",
-  "What format should I double down on?",
-  "How can I improve hook retention in first 5 seconds?"
-];
-
 const contextCards = [
   { label: "Current Platform Mix", value: "65% Instagram / 35% YouTube" },
   { label: "Top Format", value: "Educational Reels" },
@@ -39,24 +35,8 @@ const contextCards = [
 ];
 
 export default function Page() {
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      role: "assistant",
-      content:
-        "You had a retention drop at 0:07 in your last reel. Tighten the opening and show the final payoff in the first 2 seconds.",
-      time: "09:11"
-    },
-    {
-      role: "user",
-      content: "What should I post this weekend to recover momentum?",
-      time: "09:12"
-    },
-    {
-      role: "assistant",
-      content: "Post a short myth-vs-reality video tied to your top performing topic, then follow with a carousel recap.",
-      time: "09:12"
-    }
-  ]);
+  const { isAuthenticated } = useAuth();
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -96,6 +76,18 @@ export default function Page() {
     setError(null);
 
     try {
+      if (!isAuthenticated) {
+        setMessages((current) => [
+          ...current,
+          {
+            role: "assistant",
+            content: "Demo coach: this is sample guidance. Sign in to get personalized responses from your live creator data.",
+            time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+          }
+        ]);
+        return;
+      }
+
       const response = await fetch("/api/chat/message", {
         method: "POST",
         headers: {
@@ -115,6 +107,16 @@ export default function Page() {
       }
 
       setMessages((current) => [...current, { role: "assistant", content: payload.reply.content, time: payload.reply.time }]);
+      addAnalysisHistoryEntry({
+        kind: "chat",
+        title: "Coach reply generated",
+        summary: payload.reply.content.slice(0, 120),
+        mode: isAuthenticated ? "live" : "demo",
+        details: {
+          intent: payload.intent.length,
+          provider: payload.provider
+        }
+      });
     } catch (sendError) {
       const messageTextFallback = sendError instanceof Error ? sendError.message : "Unexpected chat error.";
       setError(messageTextFallback);
@@ -134,6 +136,9 @@ export default function Page() {
         <article className="card stack">
           <h3>Coach Conversation</h3>
           <div className="chat-window" role="log" aria-live="polite" ref={listRef}>
+            {messages.length === 0 ? (
+              <ChatBubble role="assistant" content="Ask anything about your content strategy and I will respond using your configured AI provider." />
+            ) : null}
             {messages.map((message, index) => (
               <ChatBubble key={`${message.role}-${index}`} role={message.role} content={message.content} time={message.time} />
             ))}
@@ -157,6 +162,7 @@ export default function Page() {
               rows={4}
             />
             {error ? <p className="muted" style={{ color: "var(--danger)" }}>{error}</p> : null}
+            {!isAuthenticated ? <p className="muted">Demo mode active. Sign in to receive live AI responses.</p> : null}
             <div className="row">
               <button className="btn btn-primary" type="submit" disabled={loading}>
                 {loading ? "Sending..." : "Send Message"}

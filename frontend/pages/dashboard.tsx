@@ -1,5 +1,8 @@
 import { KeyboardEvent as ReactKeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 import { AppShell } from "../components/AppShell";
+import { demoProfile } from "../data/mockData";
+import { useAnalysisHistory } from "../hooks/useAnalysisHistory";
+import { useAuth } from "../hooks/useAuth";
 
 type HealthScore = {
   label: string;
@@ -21,7 +24,23 @@ type PeriodKey = "7d" | "30d" | "90d";
 
 type CoachMessage = {
   role: "bot" | "usr";
-  html: string;
+  text: string;
+};
+
+type ChatReplyPayload = {
+  ok: true;
+  provider: "gemini" | "groq";
+  intent: string;
+  reply: {
+    role: "assistant";
+    content: string;
+    time: string;
+  };
+};
+
+type ChatErrorPayload = {
+  ok: false;
+  error: string;
 };
 
 const chartData: Record<PeriodKey, { labels: string[]; v1: number[]; v2: number[] }> = {
@@ -42,14 +61,6 @@ const chartData: Record<PeriodKey, { labels: string[]; v1: number[]; v2: number[
   }
 };
 
-const coachReplies = [
-  "Based on your analytics, <b>short-form vertical video</b> is driving 3.5x more reach than carousels. Double down!",
-  "Your audience peaks between <b>6-9 PM IST</b>. Schedule 2-3 posts in that window this week.",
-  "Shorter captions (under 100 chars) get <b>28% more engagement</b> on your profile. Worth testing!",
-  "Your follower growth is <b>above average</b> for your niche. You are on track for 10K in about 6 weeks.",
-  "Carousel posts with a <b>bold first slide</b> outperform by 2.1x. Use a question or hot take to open."
-];
-
 function scoreByLabel(scores: HealthScore[], label: string, fallback = 70) {
   return scores.find((score) => score.label.toLowerCase() === label.toLowerCase())?.value ?? fallback;
 }
@@ -59,6 +70,8 @@ function deltaByLabel(scores: HealthScore[], label: string, fallback = "+6%") {
 }
 
 export default function Page() {
+  const { isAuthenticated } = useAuth();
+  const { history } = useAnalysisHistory();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [profile, setProfile] = useState<ProfilePayload | null>(null);
@@ -67,18 +80,11 @@ export default function Page() {
   const [messages, setMessages] = useState<CoachMessage[]>([
     {
       role: "bot",
-      html: "<b>Hey Aiman</b>. Your engagement rate jumped this week. Reels with <b>text overlays</b> are getting 2.4x more saves."
-    },
-    {
-      role: "usr",
-      html: "Yes, and what time should I post for maximum reach?"
-    },
-    {
-      role: "bot",
-      html: "Best windows are <b>Tue/Thu at 7:30 PM</b> and <b>Sat at 11 AM</b>. Want me to draft the calendar?"
+      text: "Ask anything about your content strategy and I will answer using the same live coach backend as full chat."
     }
   ]);
-  const [replyIndex, setReplyIndex] = useState(0);
+  const [coachLoading, setCoachLoading] = useState(false);
+  const [coachError, setCoachError] = useState<string | null>(null);
   const [barsReady, setBarsReady] = useState(false);
 
   const heroCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -103,6 +109,16 @@ export default function Page() {
     [engagementScore, profile?.thisWeekPlannedPosts]
   );
 
+  const requestContext = useMemo(
+    () => ({
+      currentPlatformMix: "65% Instagram / 35% YouTube",
+      topFormat: "Educational Reels",
+      latestScore: `${engagementScore}/100`,
+      calendarFocus: profile?.priorityMove || "Myth-busting + process breakdowns"
+    }),
+    [engagementScore, profile?.priorityMove]
+  );
+
   useEffect(() => {
     let mounted = true;
 
@@ -110,6 +126,11 @@ export default function Page() {
       try {
         setLoading(true);
         setError(null);
+
+        if (!isAuthenticated) {
+          setProfile(demoProfile);
+          return;
+        }
 
         const profileRes = await fetch("/api/analyze/profile");
 
@@ -143,7 +164,7 @@ export default function Page() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => setBarsReady(true), 300);
@@ -505,24 +526,59 @@ export default function Page() {
     };
   }, []);
 
-  function sendCoachMessage() {
+  async function sendCoachMessage() {
     const value = coInput.trim();
-    if (!value) {
+    if (!value || coachLoading) {
       return;
     }
 
-    setMessages((prev) => [...prev, { role: "usr", html: value }]);
+    setMessages((prev) => [...prev, { role: "usr", text: value }]);
     setCoInput("");
+    setCoachLoading(true);
+    setCoachError(null);
 
-    window.setTimeout(() => {
-      setMessages((prev) => [...prev, { role: "bot", html: coachReplies[replyIndex % coachReplies.length] }]);
-      setReplyIndex((prev) => prev + 1);
-    }, 650);
+    try {
+      if (!isAuthenticated) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "bot",
+            text: "Demo coach: sign in to unlock personalized responses from your live account metrics."
+          }
+        ]);
+        return;
+      }
+
+      const response = await fetch("/api/chat/message", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          message: value,
+          platform: "Instagram + YouTube",
+          context: requestContext
+        })
+      });
+
+      const payload = (await response.json()) as ChatReplyPayload | ChatErrorPayload;
+
+      if (!response.ok || !payload.ok) {
+        throw new Error(!payload.ok ? payload.error : "Unable to generate a coach response right now.");
+      }
+
+      setMessages((prev) => [...prev, { role: "bot", text: payload.reply.content }]);
+    } catch (sendError) {
+      const message = sendError instanceof Error ? sendError.message : "Unexpected chat error.";
+      setCoachError(message);
+    } finally {
+      setCoachLoading(false);
+    }
   }
 
   function onCoachInputKeyDown(event: ReactKeyboardEvent<HTMLInputElement>) {
     if (event.key === "Enter") {
-      sendCoachMessage();
+      void sendCoachMessage();
     }
   }
 
@@ -654,10 +710,26 @@ export default function Page() {
               <span className="sec-lnk">See all -&gt;</span>
             </div>
             <div className="an-list">
-              <div className="an-item"><div className="an-ico ig">IG</div><div className="an-txt"><div className="an-t">Instagram Reel - Hook Performance</div><div className="an-m">2 hours ago</div></div><span className="an-s hi">92</span></div>
-              <div className="an-item"><div className="an-ico yt">YT</div><div className="an-txt"><div className="an-t">YouTube Thumbnail - CTR Audit</div><div className="an-m">Yesterday</div></div><span className="an-s md">74</span></div>
-              <div className="an-item"><div className="an-ico tk">TK</div><div className="an-txt"><div className="an-t">TikTok Profile - Growth Analysis</div><div className="an-m">3 days ago</div></div><span className="an-s hi">88</span></div>
-              <div className="an-item"><div className="an-ico ig">IG</div><div className="an-txt"><div className="an-t">Instagram Carousel - Content Scoring</div><div className="an-m">5 days ago</div></div><span className="an-s lo">58</span></div>
+              {history.slice(0, 4).map((item) => (
+                <div className="an-item" key={item.id}>
+                  <div className="an-ico ig">{item.kind.slice(0, 2).toUpperCase()}</div>
+                  <div className="an-txt">
+                    <div className="an-t">{item.title}</div>
+                    <div className="an-m">{item.summary}</div>
+                  </div>
+                  <span className={`an-s ${item.mode === "live" ? "hi" : "md"}`}>{item.mode === "live" ? "LIVE" : "DEMO"}</span>
+                </div>
+              ))}
+              {history.length === 0 ? (
+                <div className="an-item">
+                  <div className="an-ico ig">IG</div>
+                  <div className="an-txt">
+                    <div className="an-t">No saved history yet</div>
+                    <div className="an-m">Run an analysis, audit, or trend check to populate this list.</div>
+                  </div>
+                  <span className="an-s lo">NEW</span>
+                </div>
+              ) : null}
             </div>
           </section>
 
@@ -668,8 +740,9 @@ export default function Page() {
             </div>
             <div className="co-msgs" id="co-msgs" ref={coMsgsRef}>
               {messages.map((message, index) => (
-                <div key={`${message.role}-${index}`} className={`co-msg ${message.role}`} dangerouslySetInnerHTML={{ __html: message.html }} />
+                <div key={`${message.role}-${index}`} className={`co-msg ${message.role}`}>{message.text}</div>
               ))}
+              {coachLoading ? <div className="co-msg bot">Thinking through your creator context...</div> : null}
             </div>
             <div className="co-inp-row">
               <input
@@ -681,8 +754,10 @@ export default function Page() {
                 onChange={(event) => setCoInput(event.target.value)}
                 onKeyDown={onCoachInputKeyDown}
               />
-              <button className="co-send" id="co-send" type="button" onClick={sendCoachMessage}>↗</button>
+              <button className="co-send" id="co-send" type="button" onClick={() => void sendCoachMessage()} disabled={coachLoading}>↗</button>
             </div>
+            {coachError ? <p className="body" style={{ color: "var(--red)" }}>{coachError}</p> : null}
+            {!isAuthenticated ? <p className="body" style={{ color: "var(--slate-500)" }}>Demo mode active. Sign in for live dashboard and coach data.</p> : null}
           </section>
         </div>
       </div>
